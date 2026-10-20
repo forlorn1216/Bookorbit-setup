@@ -41,6 +41,7 @@ Where things live on the old Pi:
 /mnt/games/bookorbit/
   books/                    # EPUB library (Syncthing writes here)
   manga/                    # CBZ library, one folder per series
+  lightnovels/              # light novel library (mounted at /lightnovels)
   data/app/                 # covers, thumbnails, app state
   data/postgres/            # live database files (do not copy while running)
 ~/bookorbit-backup.sql      # database dump (pg_dump)
@@ -82,7 +83,7 @@ Keep `~/bookorbit-config-backup/.env` somewhere private, such as a password mana
 
 ## Compose file and .env
 
-The stack is the stock BookOrbit compose file with three edits: the app and database data folders point at the SSD, and a `/manga` volume was added. This copy was rebuilt from the stock file plus those edits, so on the old Pi run `cat ~/bookorbit/docker-compose.yml` and prefer that output if it differs.
+The stack is the stock BookOrbit compose file with edits: the app and database data folders point at the SSD, and volumes were added for `/manga` and `/lightnovels`. This copy matches the file running on the old Pi (checked with `cat ~/bookorbit/docker-compose.yml`).
 
 ```yaml
 name: bookorbit
@@ -124,7 +125,7 @@ services:
     volumes:
       - ${BOOKS_HOST_PATH:-./books}:/books
       - /mnt/games/bookorbit/manga:/manga
-      # - /mnt/games/bookorbit/lightnovels:/lightnovels   # optional, planned
+      - /mnt/games/bookorbit/lightnovels:/lightnovels
       - /mnt/games/bookorbit/data/app:/data
     read_only: true
     tmpfs:
@@ -200,11 +201,11 @@ JWT_SECRET=<copy from old .env>
 PODCAST_ENCRYPTION_KEY=<copy from old .env>
 SETUP_BOOTSTRAP_TOKEN=<copy from old .env>
 APP_URL=http://<new-device-address>:3000
-NODE_MAX_OLD_SPACE_SIZE=1024
+NODE_MAX_OLD_SPACE_SIZE=2048
 TZ=Asia/Kolkata
 ```
 
-On a device with more RAM, `NODE_MAX_OLD_SPACE_SIZE` can go back to 2048. `PUID` and `PGID` must match the owner of the SSD folders: check with `id` on the new device.
+Note that `NODE_MAX_OLD_SPACE_SIZE` is the app's memory cap. 2048 MB suits the 4 GB Pi, and a device with more RAM can raise it. `PUID` and `PGID` must match the owner of the SSD folders: check with `id` on the new device.
 
 ## Set up the new device
 
@@ -240,7 +241,7 @@ Install Docker, mount the SSD at the same path as before (`/mnt/games`), and the
 4. **If the SSD stays behind**, copy the libraries over the network instead (about 97 GB for manga, so use `tmux` and make sure the new disk has the space):
 
     ```bash
-    mkdir -p /mnt/games/bookorbit/{books,manga,data/app,data/postgres}
+    mkdir -p /mnt/games/bookorbit/{books,manga,lightnovels,data/app,data/postgres}
     rsync -a --info=progress2 gaurav@<old-ip>:/mnt/games/bookorbit/books/ /mnt/games/bookorbit/books/
     rsync -a --info=progress2 gaurav@<old-ip>:/mnt/games/bookorbit/manga/ /mnt/games/bookorbit/manga/
     rsync -a gaurav@<old-ip>:/mnt/games/bookorbit/data/app/ /mnt/games/bookorbit/data/app/
